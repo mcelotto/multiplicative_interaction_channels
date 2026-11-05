@@ -424,3 +424,80 @@ end
 % (f)
 %%%%%%%
 
+%%%%%%%%%%%%%%%%%%%%%%%%
+% re-fit MICs with only wheel speed OR only pupil diameter allowed to
+% partiicpate in the modulation
+% note that both wheel AND pupil are still regressed out
+% cap MIC rank at values selected without constraints
+% only fit in sessions with significant modulation
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+load(@ path to fig 4 results); % --> keep (sessions with sig modulation), saver (full results)
+
+% previously selected ranks
+mA = [2 2 2 2 3 2 1 1 2 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 1];
+mB = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 0 1 1 1 1 1 1 1];
+mC = [1 3 3 0 3 1 0 3 0 1 1 1 3 1 2 2 2 1 1 0 0 2 4 0 2 1 2 0];
+mD = [1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1];
+
+% fitting settings
+params = struct;
+params.max_lin_rank = 20;
+params.K = 10;
+params.ctgs_folds_on = true; 
+params.seed = 42; 
+params.opts = struct;
+params.stratify_by = [];
+params.max_mod_rank = 10;
+
+
+% store results here
+res_kp_wheel = cell(28, 1); % pupil not allowed to participate in modulation
+res_kp_pupil = cell(28, 1); % wheel not allowed to participate in modulation
+
+for idx = 1:28
+    disp(idx)
+    if keep(idx)
+        [ACA, VIP, wheel, pupil, stim_on, t] = readACAVIP(idx); % read data
+        disp(size(VIP)); disp(size(ACA))
+        X = [wheel pupil];
+        S = ACA;
+        Y = VIP;
+
+        params.mA = mA(idx); params.mB = mB(idx); params.mD = mD(idx);
+        params.max_mod_rank = mC(idx);
+
+        params.opts.mod_constraint = [1 ; 0];
+        res_kp_wheel{idx} = MIC.model_wrapper(S, X, Y, params);
+
+        params.opts.mod_constraint = [0 ; 1];
+        res_kp_pupil{idx} = MIC.model_wrapper(S, X, Y, params);
+    end
+end
+
+ve_kp_wheel = nan(28, 1); ve_kp_pupil = nan(28, 1);
+for i = 1:28
+    if ~isempty(res_kp_wheel{i})
+        ve_kp_wheel(i) = res_kp_wheel{i}.ve_mod(res_kp_wheel{i}.mC_try==res_kp_wheel{i}.mC_opt);
+        ve_kp_pupil(i) = res_kp_pupil{i}.ve_mod(res_kp_pupil{i}.mC_try==res_kp_pupil{i}.mC_opt);       
+    end
+end
+
+figure; hold on;
+scatter(0.08*randn(sum(keep), 1), ve_kp_wheel(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
+scatter(0, mean(ve_kp_wheel(keep)), 80, 'r', 'filled', 'o');
+errorbar(0, mean(ve_kp_wheel(keep)), std(ve_kp_wheel(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
+
+scatter(1 + 0.08*randn(sum(keep), 1), ve_kp_pupil(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
+scatter(1, mean(ve_kp_pupil(keep)), 80, 'r', 'filled', 'o');
+errorbar(1, mean(ve_kp_pupil(keep)), std(ve_kp_pupil(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
+
+ve_mod = nan(28, 1);
+for i = 1:28
+    ve_mod(i) = saver.res{i}.ve_mod(saver.res{i}.mC_try==saver.res{i}.mC_opt);
+end
+
+scatter(-1 + 0.08*randn(sum(keep), 1), ve_mod(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
+scatter(-1, mean(ve_mod(keep)), 80, 'c', 'filled', 'o');
+errorbar(-1, mean(ve_mod(keep)), std(ve_mod(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
+
