@@ -1,6 +1,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 % simulations shown in Fig. S4
-% benchmarking MICs versus modulator splitting
+% benchmarking MICs versus modulator splitting (a, b)
+% testing MICs ability to identify a genuine modulator among a large pool of distractors (c, d)
+%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% splitting simulation
 %%%%%%%%%%%%%%%%%%%%%%%
 
 % simulation settings
@@ -87,7 +92,7 @@ end
 % plot results
 
 figure;
-subplot(1, 2, 1); hold on; % nX = 1, plot EV mod vs. # splits
+subplot(2, 2, 1); hold on; % nX = 1, plot EV mod vs. # splits
 abc = [];
 def = [];
 for i = 1:25
@@ -107,9 +112,105 @@ for j = 1:5
         peak(k, j) = max(EV_split_mod_all{k, j});
     end
 end
-subplot(1, 2, 2); hold on; % EV mod vs. nX, pick # splits with max EV mod
+subplot(2, 2, 2); hold on; % EV mod vs. nX, pick # splits with max EV mod
 errorbar(nXlist, mean(peak_abc, 1), std(peak_abc, [], 1), 'LineWidth', 1.5);
 errorbar(nXlist, mean(peak, 1), std(peak, [], 1), 'LineWidth', 1.5);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% distractors simulation %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+num_distractors_list = [1 2 4 8 16]-1;
+nS = 5; nY = 5; % population dimensionalities
+N = 2000; % number of samples per sim
+num_sims_per = 20;
+mAgt = 2;
+noise = 1;
+mod_stren = 1;
+
+% fitting parameters
+params = struct;
+params.K = 10;
+params.ctgs_folds_on = false; 
+params.seed = 42; 
+params.opts = struct;
+params.max_mod_rank = 5;
+params.stratify_by = [];
+params.max_lin_rank = 10;
+
+
+saver = cell(1, num_sims_per);
+for nn = 1:num_sims_per
+    rng("shuffle");
+    % randomly oriented AIS
+    UAgt = randn(nS, mAgt); UAgt = UAgt./vecnorm(UAgt, 2, 1);
+    VAgt = randn(nY, mAgt); VAgt = VAgt./vecnorm(VAgt, 2, 1);
+    Agt = UAgt*VAgt';
+
+    % randomly oriented MIC
+    WSgt = randn(nS, 1); WSgt = mod_stren*WSgt./vecnorm(WSgt, 2, 1);
+    WYgt = randn(nY, 1); WYgt = WYgt./vecnorm(WYgt, 2, 1);
+
+    % simulate
+    S = randn(N, nS);
+    Xmax = randn(N, max(num_distractors_list)+1);
+    noiseY = noise*randn(N, nY);
+
+    abc = struct;
+    abc.Agt = Agt;
+    abc.WSgt = WSgt;
+    abc.WYgt = WYgt;
+    abc.S = S;
+    abc.Xmax = Xmax;
+    abc.noiseY = noiseY;
+
+    results = cell(size(num_distractors_list));
+
+    for ii = 1:length(num_distractors_list)
+        disp([nn, ii])
+        num_X_dims = num_distractors_list(ii) + 1;
+
+        X = Xmax(:, 1:num_X_dims);
+        WXgt = [1; zeros(num_X_dims-1, 1)];
+
+        Y = S*Agt + ((S*WSgt).*(X*WXgt))*WYgt.' + noiseY;
+
+        % fit
+        out = MIC.model_wrapper(S, X, Y, params);
+        results{ii} = out;
+    end
+    abc.results = results;
+    saver{nn} = abc;
+end
+
+% plot results
+ve_mod = [];
+cos_angle = [];
+rand_shuf_angle = [];
+for i = 1:length(saver)
+    for j = 1:length(num_distractors_list)
+        curr = saver{i}.results{j};
+        ve_mod(i, j) = curr.ve_mod(curr.mC_try==curr.mC_opt);
+        for k = 1:params.K
+            WX = curr.cv_mod{curr.mC_try==curr.mC_opt}.WX(:, :, k);
+            cos_angle(i, j, k) = abs((WX/norm(WX))'*[1 ; zeros(length(WX)-1, 1)]);
+        end
+
+        if i == 1
+            numshufs = 1e3;
+            for nn = 1:numshufs
+                WX = randn(size(WX));
+                rand_shuf_angle(j, nn) = abs((WX/norm(WX))'*[1 ; zeros(length(WX)-1, 1)]);
+            end
+        end
+    end
+end
+
+subplot(2, 2, 3);
+errorbar(num_distractors_list, mean(ve_mod, 1), std(ve_mod, [], 1)/sqrt(size(ve_mod, 1)));
+
+subplot(2, 2, 4);
+errorbar(num_distractors_list, mean(rand_shuf_angle, 1), std(rand_shuf_angle, [], 1)/sqrt(size(rand_shuf_angle, 1)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% split pipeline %%%%%%%
