@@ -2,13 +2,8 @@ function out = bilinearity_test(sX, sZ, sY, foldid) % +MIC
 
 % Held-out diagnostic of the bilinearity of a fitted MIC (Appendix B.11).
 % The target score sY is regressed on the bilinear term alone (null) and
-% on the bilinear term plus higher-order terms in one factor:
-%   bilinear (null):  sY ~ sX.*sZ
-%   nonlinear in x:   sY ~ sX.*sZ + sX.^2.*sZ + sX.^3.*sZ
-%   nonlinear in z:   sY ~ sX.*sZ + sX.*sZ.^2 + sX.*sZ.^3
+% on the bilinear term plus higher-order terms in one factor
 % All regressions are ridge-regularized and evaluated on held-out folds.
-% The extra penalty on the higher-order terms is selected by inner
-% cross-validation within each training fold.
 %
 % NOTE ON VARIABLE NAMING: sX, sZ, sY follow the paper (source, modulator,
 % target scores).
@@ -27,13 +22,12 @@ function out = bilinearity_test(sX, sZ, sY, foldid) % +MIC
 % Significance is assessed outside this function (sign test across
 % simulation runs or sessions).
 
-%%%%%%%%%%%%%%%%%%%%%%%
+
 modVE_min = 0.001; % minimum held-out EV of the bilinear term
 winsSD = 6; % scores winsorized at mean +- winsSD*SD
 ridge = 1e-3; % base ridge on all coefficients (scaled by trace(F'*F)/p)
 lambda_grid = [0 10.^(-4:1)]; % candidate extra penalties on the higher-order terms
 K_inner = 5; % inner CV folds for penalty selection
-%%%%%%%%%%%%%%%%%%%%%%%
 
 % remove nans, winsorize
 valid = ~isnan(sX) & ~isnan(sZ) & ~isnan(sY);

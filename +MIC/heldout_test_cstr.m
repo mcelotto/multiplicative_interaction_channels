@@ -1,4 +1,5 @@
-function [inner_model, EV_A, EV_B, EV_D, EV_mod, EV_A_shuf, EV_B_shuf, EV_D_shuf, EV_mod_shuf, p_A, p_B, p_D, p_mod] = heldout_test(S, X, Y, params, Kouter, nshuffle, shuffle_type) %+MIC
+function [inner_model, EV_A, EV_B, EV_D, EV_mod, EV_A_shuf, EV_B_shuf, EV_D_shuf, EV_mod_shuf, p_A, p_B, p_D, p_mod] = ...
+    heldout_test_cstr(S, X, Y, params, Kouter, nshuffle, shuffle_type) %+MIC
 rng(params.seed);
 
 % Permutation significance test for each component of the MICs model

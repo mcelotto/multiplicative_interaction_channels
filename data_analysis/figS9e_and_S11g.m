@@ -7,7 +7,7 @@
 clear; close all;
 
 dataset = 'V1_V2'; % 'V1_V2' (fig S9e) or 'ACA_VIP' (fig S11g)
-results_path = @@ your path; % folder with the results of fig4ad_and_S9.m
+results_path = @@ your path; % folder with the results of fig4ad_and_S9.m (V1-V2) or fig4.m (ACA-VIP)
 fig_save_path = @@ your path;
 
 % load fitted models (res) and sessions with significant modulation (keep)
@@ -15,7 +15,7 @@ switch dataset
     case 'V1_V2'
         load(fullfile(results_path, 'one_hot_sig_heldout_V1_V2'), "res", "keep", "params");
     case 'ACA_VIP'
-        load(@@ path to fig 4 ACAxVIP results); % --> (res, keep)
+        load(fullfile(results_path, 'ACAxVIP_fig4_results'), "res", "keep");
 end
 
 % diagnostic on each MIC, averaged across the MICs of a session

@@ -1,7 +1,6 @@
 function [ACA, VIP, wheel, pupil, stim_on, t, type] = readACAVIP(idx)
 
 % Reads one session of the ACA-VIP dataset (https://osf.io/2ekj4/).
-% ACA axon and VIP neuron traces are linearly detrended.
 %
 % Inputs:
 %   idx      session index (1-28, alphabetical order of the session files)

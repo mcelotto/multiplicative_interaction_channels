@@ -2,9 +2,6 @@ function [V1, V2, stim] = readSemedo(idx, params)
 
 % Reads one session of the V1-V2 dataset of Zandvakili & Kohn (2015), as
 % analyzed in Semedo et al. (2019) (CRCNS, https://crcns.org/data-sets/vc/v1v2-1).
-% Spike counts are binned in the 160-1160 ms window after stimulus onset,
-% units firing < 0.5 spikes/s are excluded, and the PSTH (mean over trials
-% of the same orientation, per time bin) is subtracted from each unit.
 %
 % Inputs:
 %   idx      session index (1-5, alphabetical order of the session files)

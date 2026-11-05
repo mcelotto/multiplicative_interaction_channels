@@ -4,18 +4,7 @@
 %
 % Each nonlinear generator of Appendix B.10 is linearly interpolated with
 % a bilinear generator built from the same draw of S, X, A and channel
-% axes:
-%   Y = (1 - rho)*Ybil + rho*Ynl + noise
-% rho = 0 is purely bilinear (false positive control), rho = 1 is the
-% original nonlinear generator:
-%   relu, tanh:  Ybil = S*A + a*(S*WS .* X)*WY',  Ynl = relu(Ybil) / tanh(Ybil)
-%   relu_z:      Ynl = S*A + a*(S*WS .* relu(X))*WY'
-%   exp:         Ynl = (S*A).^(1 + a*(2X - 1)), S, X ~ U(0, 1), A with positive entries
-%                Ybil = S*A + a*(S*WS .* (2X - 1))*WY'
-%   rot_perp,    Ynl = S*R(theta)'*A, theta = X*WX*a*pi/3, A = diag(1, 1, 0), nS = nY = 3
-%   rot_par:     Ybil = S*A + a*(S*WS .* X*WX)*WY'
-% For all bilinear generators, WS lies in the source AIS and WY at pi/4
-% from the target AIS.
+% axes
 %%%%%%%%%%%%%%%%%%%%%%%
 
 clear; close all;

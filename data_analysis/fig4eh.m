@@ -5,6 +5,8 @@
 
 clear; close all;
 
+save_path = @@ your path; % folder for fitting results
+
 % fitting settings
 params = struct;
 params.max_lin_rank = 20;
@@ -61,14 +63,14 @@ for idx = 1:28
         WShat = mean(res{idx}.cv_mod{res{idx}.mC_try==res{idx}.mC_opt}.WS, 3);
         WYhat = mean(res{idx}.cv_mod{res{idx}.mC_try==res{idx}.mC_opt}.WY, 3);
     
-        abc = MIC.compute_alphas(Ahat, results.mA_opt, WShat, WYhat);
-        alpha_null_subtr(idx, :) = [abc.in abc.Srot abc.Yrot abc.new]; 
+        abc = MIC.compute_alphas(Ahat, res{idx}.mA_opt, WShat, WYhat);
+        alpha_null_subtr(idx, :) = [mean(abc.in) mean(abc.Srot) mean(abc.Yrot) mean(abc.new)]; % averaged across MICs
 
         % random rotation null
         alpha_null = nan(nrot, 4);
         for i = 1:nrot
             abc = MIC.compute_alphas(Ahat, res{idx}.mA_opt, randn(size(WShat)), randn(size(WYhat)));
-            alpha_null(i, :) = [abc.in abc.Srot abc.Yrot abc.new];
+            alpha_null(i, :) = [mean(abc.in) mean(abc.Srot) mean(abc.Yrot) mean(abc.new)];
         end
     
         alpha_null_subtr(idx, :) = alpha_null_subtr(idx, :) - mean(alpha_null, 1);
@@ -112,58 +114,82 @@ for idx = 1:28
     res_shuf{idx} = abc;
 end
 
-% save
-save(@@ your path, "res"); save(@@ your path, "res_cstr"); save(@@ your path, "alpha_null_subtr"); save(@@ your path, "res_shuf");
-
-% plot results
-
 % identify sessions with significant modulation
 mC = nan(1, 28); for i = 1:28; mC(i) = res{i}.mC_opt*(p_mod(i)<0.05); end
 keep = mC>0;
-save(@@ save path for keep, "keep");
 
-% reorganize EV
+% save
+save(fullfile(save_path, 'ACAxVIP_fig4_results'), "res", "res_cstr", "alpha_null_subtr", "res_shuf", "keep", "params");
+
+%% load results and plot
+load(fullfile(save_path, 'ACAxVIP_fig4_results'));
+mC = nan(1, 28); for i = 1:28; mC(i) = res{i}.mC_opt*keep(i); end % selected mod rank of sessions with significant modulation
+
+% reorganize EV (columns in plotted order: none, ACA, VIP, both)
+cond_names = {'none', 'ACA', 'VIP', 'both'};
 EVmod = nan(28, 4); 
 EVA = nan(28, 1);
 for i = 1:28
     EVA(i) = res{i}.veA(res{i}.mA_opt==res{i}.mA_try);
-    for j = 1:4
-        if ~isempty(res_cstr{i, j}.mC_opt)
-            EVmod(i, j) = res_cstr{i, j}.ve_mod(res_cstr{i, j}.mC_opt==res_cstr{i, j}.mC_try); 
-        end
+    if res{i}.mC_opt>0
+        EVmod(i, 1) = ve_at_opt(res{i}); % unconstrained
+        EVmod(i, 2) = ve_at_opt(res_cstr{i, 3}); % MIC confined to AIS in source (ACA)
+        EVmod(i, 3) = ve_at_opt(res_cstr{i, 2}); % MIC confined to AIS in target (VIP)
+        EVmod(i, 4) = ve_at_opt(res_cstr{i, 1}); % MIC confined to AIS in source and target (both)
     end
 end
 
+% LME statistics: per-session values modeled as d ~ 1 + (1|animal),
+% intercept tested against zero (two-tailed); Holm correction across the 4
+% constrained-fit comparisons and across the 4 geometry indices (Appendix B.8, B.14)
+animal_id = [repelem(1, 1, 10), repelem(2, 1, 10), repelem(3, 1, 8)]; % sessions 1-10: animal 1; 11-20: animal 2; 21-28: animal 3
+animal = categorical(animal_id(keep)');
+uA = categories(animal);
+nA = numel(uA);
+
+% constrained fits: differences in modulation EV between pairs of fits
+pairs = [3 4; 2 3; 2 4; 1 3]; % VIP vs both (ns), ACA vs VIP, ACA vs both (sn), none vs VIP (sn + nn)
+M = EVmod(keep, :);
+stat_cstr = lme_test(M(:, pairs(:, 2)) - M(:, pairs(:, 1)), animal);
+stat_cstr.p_holm = holm_adjust(stat_cstr.p_raw);
+stat_cstr.Properties.RowNames = strcat(cond_names(pairs(:, 1))', {' vs '}, cond_names(pairs(:, 2))');
+disp('--- constrained fits (EV mod), LME ---'); disp(stat_cstr)
+
+% geometry indices: null-subtracted index vs 0
+idx_names = {'ss', 'ns', 'sn', 'nn'};
+stat_alpha = lme_test(alpha_null_subtr(keep, :), animal);
+stat_alpha.p_holm = holm_adjust(stat_alpha.p_raw);
+stat_alpha.Properties.RowNames = idx_names;
+disp('--- geometry indices (null subtracted), LME ---'); disp(stat_alpha)
+
+% constrained fits; dots: animal means; red: mean +- SEM across sessions
 figure(1);
 subplot(2, 14, 25:28); hold on;
+M_anim = nan(nA, 4);
+for a = 1:nA
+    M_anim(a, :) = mean(M(animal == uA{a}, :), 1, 'omitnan');
+end
 for i = 1:4
-    scatter(i+0.08*randn(sum(keep), 1), EVmod(keep, i), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
+    scatter(i + 0.05*randn(nA, 1), M_anim(:, i), 55, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.85);
 end
-
-scatter(1:4, nanmean(EVmod(keep, :), 1), 80, 'r', 'filled', 'o');
-errorbar(1:4, nanmean(EVmod(keep, :), 1), nanstd(EVmod(keep, :), [], 1)./sqrt(sum(keep)), 'k', 'LineWidth', 1.5, 'LineStyle', 'none');
-
-% test significance of constrained EV comparisons
-M = EVmod(keep, 1:4);
-T = array2table(M, 'VariableNames', {'Cond1','Cond2','Cond3','Cond4'});
-WithinDesign = table(categorical([1;2;3;4]), 'VariableNames', {'Condition'}); % define the within-subject factor
-rm = fitrm(T, 'Cond1-Cond4 ~ 1', 'WithinDesign', WithinDesign); % fit repeated-measures model
-ranovatbl = ranova(rm); % repeated-measures ANOVA for the within-subject effect
-posthocTbl = multcompare(rm, 'Condition', 'ComparisonType', 'bonferroni'); % pairwise post hoc comparisons across conditions with Bonferroni correction
-posthocTbl = posthocTbl(...
-    double(posthocTbl.Condition_2)>double(posthocTbl.Condition_1),:);
-
-for i = 1:size(posthocTbl,1)
-    maxY = max(M,[],'all');
-    p = posthocTbl.pValue(i);
-    pos = mean(double([posthocTbl.Condition_1(i),posthocTbl.Condition_2(i)]));
-    diff = double(posthocTbl.Condition_2(i))-double(posthocTbl.Condition_1(i));
-    pvalues_plot(p,pos,maxY+i*(maxY/8),(maxY/10),1,15,diff/2,'k',1);
+scatter(1:4, mean(M, 1, 'omitnan'), 80, 'r', 'filled', 'o');
+errorbar(1:4, mean(M, 1, 'omitnan'), std(M, [], 1, 'omitnan')./sqrt(sum(~isnan(M), 1)), ...
+    'k', 'LineStyle', 'none', 'LineWidth', 1.5);
+yTop = max(M(:), [], 'omitnan');
+for k = 1:size(pairs, 1)
+    pvalues_plot(stat_cstr.p_holm(k), mean(pairs(k, :)), yTop + k*(yTop/8), yTop/10, 1, 15, diff(pairs(k, :))/2, 'k', 1);
 end
+xticks(1:4)
+xticklabels(cond_names)
+ylabel('mod EV')
 
-% modulation EV vs. rank
-abc = []; for i = 1:28; abc(i, :) = [res{i}.ve_mod(:)' res{i}.ve_mod(end)*ones(1, params.max_mod_rank+1-length(res{i}.ve_mod))]; end
-col_insig = rand(1, 3);
+% modulation EV relative to AIS EV vs. rank
+abc = [];
+for i = 1:28
+    ve = res{i}.ve_mod(:)'/EVA(i);
+    abc(i, :) = [ve ve(end)*ones(1, params.max_mod_rank+1-length(ve))];
+end
+col_insig = [0 0.4470 0.7410]; % sessions without significant modulation (blue)
 
 subplot(2, 14, [1:4 15:18]); hold on; 
 plot(0:10, abc(keep, :), 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
@@ -175,23 +201,65 @@ for i = 1:28
         scatter(mC(i), abc(i, mC(i)+1), 60, 'k', 'filled');
     end
 end
+ylabel('EV mod / EV AIS')
+xlabel('modulation rank')
 
-% plot geometry indices
+% geometry indices; dots: animal means; red: mean +- SEM across animals
 subplot(2, 14, 11:14); hold on;
-for i = 1:4
-    scatter(i+0.05*randn(sum(keep), 1), alpha_null_subtr(keep, i), 40, 'filled', 'o', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.3);
+alpha_keep = alpha_null_subtr(keep, :);
+alpha_anim = nan(nA, 4);
+for a = 1:nA
+    alpha_anim(a, :) = mean(alpha_keep(animal == uA{a}, :), 1, 'omitnan');
 end
-scatter(1:4, mean(alpha_null_subtr(keep, :), 1), 80, 'r', 'filled', 'o');
+for i = 1:4
+    scatter(i + 0.05*randn(nA, 1), alpha_anim(:, i), 40, 'filled', 'o', 'MarkerFaceColor', 'k', 'MarkerFaceAlpha', 0.3);
+end
+scatter(1:4, mean(alpha_anim, 1), 80, 'r', 'filled', 'o');
 yline(0, '--r', 'LineWidth', 1.5);
-errorbar(1:4, mean(alpha_null_subtr(keep, :), 1), std(alpha_null_subtr(keep, :), 1)/sqrt(sum(keep)), 'k', 'LineStyle', 'none', 'LineWidth', 1);
-
+errorbar(1:4, mean(alpha_anim, 1), std(alpha_anim, [], 1)/sqrt(nA), 'k', 'LineStyle', 'none', 'LineWidth', 1);
 for i = 1:4
-    [h, p] = ttest(alpha_null_subtr(keep, i));
-    p = p*4; % Bonferroni correction
-    pvalues_plot(p,i,0.8,0.05,1,14, 0, 'k', 1)
+    pvalues_plot(stat_alpha.p_holm(i), i, 0.8, 0.05, 1, 14, 0, 'k', 1)
 end
+xticks(1:4)
+xticklabels(idx_names)
 
 %%%%%%% HELPERS %%%%%%
+function ve = ve_at_opt(r)
+% cross-validated modulation EV at the selected modulation rank
+if isempty(r.mC_opt)
+    ve = NaN;
+else
+    ve = r.ve_mod(r.mC_opt==r.mC_try);
+end
+end
+
+function stat = lme_test(D, animal)
+% for each column of D (one value per session), fits d ~ 1 + (1|animal)
+% and tests the intercept against zero
+n = size(D, 2);
+est = nan(n, 1); se = nan(n, 1); df = nan(n, 1); p_raw = nan(n, 1);
+for i = 1:n
+    ok = ~isnan(D(:, i));
+    tbl = table(D(ok, i), animal(ok), 'VariableNames', {'d', 'animal'});
+    mdl = fitlme(tbl, 'd ~ 1 + (1|animal)');
+    est(i) = mdl.Coefficients.Estimate(1);
+    se(i) = mdl.Coefficients.SE(1);
+    df(i) = mdl.Coefficients.DF(1);
+    p_raw(i) = mdl.Coefficients.pValue(1);
+end
+stat = table(est, se, df, p_raw);
+end
+
+function p_adj = holm_adjust(p)
+% Holm step-down adjusted p-values
+p = p(:); k = numel(p);
+[ps, ord] = sort(p, 'ascend');
+adj = min(1, ps .* (k:-1:1)'); % p_(j) * (k - j + 1)
+adj = cummax(adj); % monotonicity in the sorted order
+p_adj = nan(size(p));
+p_adj(ord) = adj;
+end
+
 function pvalues_plot(pval, pos, maxY, dpt, scale, f2, width, color, star)
 
 if nargin<7
