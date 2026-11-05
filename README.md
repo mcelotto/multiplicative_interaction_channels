@@ -16,8 +16,6 @@ MICs extend the communication subspace framework (reduced-rank regression betwee
 - `data_analysis/` – real-data analyses, organized by figure:
   - V1–V2 benchmark data (Fig. 4a–d, S9)
   - ACA–VIP data (Fig. 4e–h, S10, S11)
-- `example.m` – minimal example running the pipeline on a single ACA–VIP session
-- `ACAxVIP/` – two example ACA–VIP sessions used by `example.m`
 
 Paths to data and results are marked with `@@` in the scripts and must be set before running.
 
