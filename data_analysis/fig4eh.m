@@ -58,25 +58,34 @@ for idx = 1:28
         params2.opts.source_constraint = "same"; params2.opts.target_constraint = "none";
         res_cstr{idx, 3} = MIC.model_wrapper(S, X, Y, params2); % MIC confined to AIS in source
     
-        % compute geometry indices
-        Ahat = mean(res{idx}.cvA{res{idx}.mA_try==res{idx}.mA_opt}.A, 3);
+        % compute geometry indices in each CV fold (A, WS, WY fitted on the
+        % same training data), averaged across MICs and folds
+        alpha_hat = nan(params.K, 4);
+        alpha_null = nan(params.K, 4);
+        for k = 1:params.K
+            Ak = res{idx}.cvA{res{idx}.mA_try==res{idx}.mA_opt}.A(:, :, k);
+            WSk = res{idx}.cv_mod{res{idx}.mC_try==res{idx}.mC_opt}.WS(:, :, k);
+            WYk = res{idx}.cv_mod{res{idx}.mC_try==res{idx}.mC_opt}.WY(:, :, k);
+            abc = MIC.compute_alphas(Ak, res{idx}.mA_opt, WSk, WYk);
+            alpha_hat(k, :) = [mean(abc.in) mean(abc.Srot) mean(abc.Yrot) mean(abc.new)];
+
+            % random rotation null
+            temp = zeros(1, 4);
+            for i = 1:nrot
+                abc = MIC.compute_alphas(Ak, res{idx}.mA_opt, randn(size(WSk)), randn(size(WYk)));
+                temp = temp + [mean(abc.in) mean(abc.Srot) mean(abc.Yrot) mean(abc.new)]/nrot;
+            end
+            alpha_null(k, :) = temp;
+        end
+        alpha_null_subtr(idx, :) = mean(alpha_hat, 1) - mean(alpha_null, 1);
+
+        % compute correlation slopes (fold-averaged MIC weights; data
+        % without NaN samples, z-scored as in the fit)
         WShat = mean(res{idx}.cv_mod{res{idx}.mC_try==res{idx}.mC_opt}.WS, 3);
         WYhat = mean(res{idx}.cv_mod{res{idx}.mC_try==res{idx}.mC_opt}.WY, 3);
-    
-        abc = MIC.compute_alphas(Ahat, res{idx}.mA_opt, WShat, WYhat);
-        alpha_null_subtr(idx, :) = [mean(abc.in) mean(abc.Srot) mean(abc.Yrot) mean(abc.new)]; % averaged across MICs
-
-        % random rotation null
-        alpha_null = nan(nrot, 4);
-        for i = 1:nrot
-            abc = MIC.compute_alphas(Ahat, res{idx}.mA_opt, randn(size(WShat)), randn(size(WYhat)));
-            alpha_null(i, :) = [mean(abc.in) mean(abc.Srot) mean(abc.Yrot) mean(abc.new)];
-        end
-    
-        alpha_null_subtr(idx, :) = alpha_null_subtr(idx, :) - mean(alpha_null, 1);
-    
-        % compute correlation slopes
         WXhat = mean(res{idx}.cv_mod{res{idx}.mC_try==res{idx}.mC_opt}.WX, 3);
+        valid = sum(isnan([S X Y]), 2)==0;
+        Sz = zscore(S(valid, :), [], 1); Xz = zscore(X(valid, :), [], 1); Yz = zscore(Y(valid, :), [], 1);
     
         WShat = WShat./vecnorm(WShat, 2, 1);
         WYhat = WYhat./vecnorm(WYhat, 2, 1);
@@ -86,7 +95,7 @@ for idx = 1:28
         cc = zeros(size(WShat, 2), length(qq)-1); % correlation between ACA and VIP projections
         cols = cool(length(qq)-1);
         for j = 1:size(WShat, 2)
-            ss = S*WShat(:, j); xx = X*WXhat(:, j); yy = Y*WYhat(:, j); % projections
+            ss = Sz*WShat(:, j); xx = Xz*WXhat(:, j); yy = Yz*WYhat(:, j); % projections
             for k = 1:(length(qq)-1)
                 if k == (length(qq)-1)
                     keep2 = quantile(xx, qq(k))<=xx & xx<=quantile(xx, qq(k+1));
@@ -119,7 +128,7 @@ mC = nan(1, 28); for i = 1:28; mC(i) = res{i}.mC_opt*(p_mod(i)<0.05); end
 keep = mC>0;
 
 % save
-save(fullfile(save_path, 'ACAxVIP_fig4_results'), "res", "res_cstr", "alpha_null_subtr", "res_shuf", "keep", "params");
+save(fullfile(save_path, 'ACAxVIP_fig4_results'), "res", "res_cstr", "alpha_null_subtr", "res_shuf", "cc_all", "keep", "params");
 
 %% load results and plot
 load(fullfile(save_path, 'ACAxVIP_fig4_results'));
@@ -222,6 +231,33 @@ for i = 1:4
 end
 xticks(1:4)
 xticklabels(idx_names)
+
+% ACA-VIP correlation slope vs behavioral state score, averaged across MICs
+% (sessions with significant modulation)
+qq = linspace(0, 1, 7); % quantiles of modulator projection (as in the fit section)
+qm = (qq(1:(end-1))+qq(2:end))/2; % quantile bin centres
+slope_sess = nan(28, 1);
+for i = find(keep)
+    slope_chan = nan(1, size(cc_all{i}, 1));
+    for j = 1:size(cc_all{i}, 1)
+        c = polyfit(qm, cc_all{i}(j, :), 1);
+        slope_chan(j) = c(1);
+    end
+    slope_sess(i) = mean(slope_chan);
+end
+slope_sess = slope_sess(keep);
+
+figure('Position', [157, 322, 167, 290]); hold on
+x_shift = linspace(-0.1, 0.1, numel(slope_sess));
+scatter(1 + x_shift, slope_sess, 40, 'filled', 'MarkerFaceColor', [0.5 0.5 0.5], 'MarkerEdgeColor', 'none')
+scatter(1, mean(slope_sess), 80, 'r', 'filled')
+errorbar(1, mean(slope_sess), std(slope_sess) / sqrt(numel(slope_sess)), 'k', 'LineStyle', 'none', 'LineWidth', 1.5)
+yline(0, '--k')
+[~, p] = ttest(slope_sess);
+pvalues_plot(p, 1, max(slope_sess), 0.1 * range([0; slope_sess]), 1, 14, 0, 'k', 0)
+xlim([0.5 1.5]); xticks([])
+ylabel('ACA–VIP score corr slope')
+sam_style
 
 %%%%%%% HELPERS %%%%%%
 function ve = ve_at_opt(r)

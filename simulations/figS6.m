@@ -1,3 +1,10 @@
+%%%%%%%%%%%%%%%%%%%%%%%
+% simulations shown in Fig. S6
+% sample efficiency of MICs vs one-hidden-layer MLPs
+% requires the results of figS6_bilinear_simulation.m (bilinear_saver.mat)
+% and of figS5ab.m (rotation_sim_results_2.mat); run those scripts first
+%%%%%%%%%%%%%%%%%%%%%%%
+
 clear; close all;
 
 all_scenarios = {'bilinear', 'rotation'}; % scenarios to test MLPs on
@@ -10,7 +17,7 @@ resMIC = cell(length(all_scenarios), 1); % store MICs results here
 counter = 1;
 for scenario = all_scenarios
     scenario = scenario{1};
-    data_dir = @ path to nonlinear simulation results
+    data_dir = @@ your path; % folder with bilinear_saver.mat and rotation_sim_results_2.mat, ending with a file separator
     rot_setting = 2; % 1 = perp, 2 = par
 
     switch scenario

@@ -33,51 +33,6 @@ scatter(1:28, res_shuf{end}.p_A, 30, 'Marker', 's'); % p-values of all sessions 
 scatter(1:28, res_shuf{end}.p_mod, 30, 'Marker', 'o');
 set(gca, 'yscale', 'log');
 
-%%% AIS EV and behavioral state encoding EV (term B) vs. rank
-figure;
-abc = [];
-for i = 1:28
-    abc(i, :) = [res{i}.veA(:)' res{i}.veA(end)*ones(1, 21-length(res{i}.veA))];
-end
-subplot(1, 2, 1); hold on; % AIS EV
-plot(0:20, abc, 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-for i = 1:28
-    scatter(res{i}.mA_opt, abc(i, res{i}.mA_opt+1), 60, 'k', 'filled');
-end
-xlabel('AIS rank'); ylabel('AIS EV')
-
-abc = [];
-for i = 1:28
-    abc(i, :) = [res{i}.veB(:)' res{i}.veB(end)*ones(1, 3-length(res{i}.veB))];
-end
-subplot(1, 2, 2); hold on; % B EV
-plot(0:2, abc, 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
-for i = 1:28
-    scatter(res{i}.mB_opt, abc(i, res{i}.mB_opt+1), 60, 'k', 'filled');
-end
-xlabel('behav. encoding rank'); ylabel('behav. encoding EV')
-
-%%% modulation EV in sessions with gratings vs. natural movies (sessions with significant modulation)
-ve_mod = nan(28, 1);
-is_movie = false(28, 1);
-for i = find(keep(:))'
-    ve_mod(i) = res{i}.ve_mod(res{i}.mC_try==res{i}.mC_opt);
-    [~, ~, ~, ~, ~, ~, type] = readACAVIP(i);
-    is_movie(i) = strcmp(type, 'movies');
-end
-v = {ve_mod(keep(:) & ~is_movie), ve_mod(keep(:) & is_movie)};
-
-figure; hold on;
-for g = 1:2
-    scatter(g + 0.08*randn(numel(v{g}), 1), v{g}, 40, [0.5 0.5 0.5], 'filled', 'o');
-    scatter(g, mean(v{g}), 80, 'r', 'filled', 'o');
-    errorbar(g, mean(v{g}), std(v{g})/sqrt(numel(v{g})), 'k', 'LineStyle', 'none', 'LineWidth', 1.5);
-end
-[~, p] = ttest2(v{1}, v{2}); % two-tailed t-test
-pvalues_plot(p, 1.5, max([v{:}]), 0.1*max([v{:}]), 1, 14, 0.5, 'k', 0)
-xticks([1 2]); xticklabels({'gratings', 'movies'}); xlim([0.5 2.5])
-ylabel('MIC EV')
-
 %%% compute alignment indices
 align_hat = nan(28, 2);
 align_shuf = nan(28, 2);
