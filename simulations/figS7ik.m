@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%
-% simulations shown in Fig. S5i-k
+% simulations shown in Fig. S7i-k
 % validating geometry decomposition with multiple MICs
 %%%%%%%%%%%%%%%%%%%%%%%
 

@@ -7,7 +7,7 @@
 
 clear; close all;
 
-results_path = @@ your path; % folder with the results of fig4.m
+results_path = @@ your path; % folder with the results of fig4eh.m
 save_path = @@ your path; % folder for fitting results
 fig_save_path = @@ your path; % folder for figures
 

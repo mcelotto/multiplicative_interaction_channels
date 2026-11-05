@@ -1,18 +1,20 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% code to generate fig S10
+% code to generate fig S10 (except panel m: see figS10m.m)
 % further analyses of ACAxVIP data
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-load(@@ path to fig 4 ACAxVIP results); % --> (res, res_cstr, res_shuf, alpha_null_subtr, keep)
-paths = @@ save paths
+results_path = @@ your path; % folder with the results of fig4eh.m
+paths.figures = @@ your path; % folder for figures
+
+load(fullfile(results_path, 'ACAxVIP_fig4_results')); % --> (res, res_cstr, res_shuf, alpha_null_subtr, keep)
 
 % plot results of shuffle test
-ms = nan(length(res_shuf{1}.EV_mod_shuf{1}), 28);
+ms = nan(size(res_shuf{1}.EV_mod_shuf, 1), 28);
 as = nan(size(ms));
 EV_A = nan(1, 28); EV_mod = nan(1, 28);
 for i = 1:28
-    ms(:, i) = (res_shuf{i}.EV_mod_shuf{1}+res_shuf{i}.EV_mod_shuf{2})/2; % null distribution of fold-avg mod EV
-    as(:, i) = (res_shuf{i}.EV_A_shuf{1}+res_shuf{i}.EV_A_shuf{2})/2; % null distribution of fold-avg AIS EV
+    ms(:, i) = (res_shuf{i}.EV_mod_shuf(:, 1)+res_shuf{i}.EV_mod_shuf(:, 2))/2; % null distribution of fold-avg mod EV
+    as(:, i) = (res_shuf{i}.EV_A_shuf(:, 1)+res_shuf{i}.EV_A_shuf(:, 2))/2; % null distribution of fold-avg AIS EV
     EV_A(i) = mean(res_shuf{i}.EV_A); 
     EV_mod(i) = mean(res_shuf{i}.EV_mod);
 end
@@ -27,9 +29,54 @@ boxplot(as, 'Symbol', ''); % null
 scatter(1:28, EV_A); % actual
 
 subplot(3, 1, 3); hold on; % p-values
-scatter(1:28, res_shuf.p_A, 30, 'Marker', 's');
-scatter(1:28, res_shuf.p_mod, 30, 'Marker', 'o');
+scatter(1:28, res_shuf{end}.p_A, 30, 'Marker', 's'); % p-values of all sessions (stored with the last session)
+scatter(1:28, res_shuf{end}.p_mod, 30, 'Marker', 'o');
 set(gca, 'yscale', 'log');
+
+%%% AIS EV and behavioral state encoding EV (term B) vs. rank
+figure;
+abc = [];
+for i = 1:28
+    abc(i, :) = [res{i}.veA(:)' res{i}.veA(end)*ones(1, 21-length(res{i}.veA))];
+end
+subplot(1, 2, 1); hold on; % AIS EV
+plot(0:20, abc, 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
+for i = 1:28
+    scatter(res{i}.mA_opt, abc(i, res{i}.mA_opt+1), 60, 'k', 'filled');
+end
+xlabel('AIS rank'); ylabel('AIS EV')
+
+abc = [];
+for i = 1:28
+    abc(i, :) = [res{i}.veB(:)' res{i}.veB(end)*ones(1, 3-length(res{i}.veB))];
+end
+subplot(1, 2, 2); hold on; % B EV
+plot(0:2, abc, 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5);
+for i = 1:28
+    scatter(res{i}.mB_opt, abc(i, res{i}.mB_opt+1), 60, 'k', 'filled');
+end
+xlabel('behav. encoding rank'); ylabel('behav. encoding EV')
+
+%%% modulation EV in sessions with gratings vs. natural movies (sessions with significant modulation)
+ve_mod = nan(28, 1);
+is_movie = false(28, 1);
+for i = find(keep(:))'
+    ve_mod(i) = res{i}.ve_mod(res{i}.mC_try==res{i}.mC_opt);
+    [~, ~, ~, ~, ~, ~, type] = readACAVIP(i);
+    is_movie(i) = strcmp(type, 'movies');
+end
+v = {ve_mod(keep(:) & ~is_movie), ve_mod(keep(:) & is_movie)};
+
+figure; hold on;
+for g = 1:2
+    scatter(g + 0.08*randn(numel(v{g}), 1), v{g}, 40, [0.5 0.5 0.5], 'filled', 'o');
+    scatter(g, mean(v{g}), 80, 'r', 'filled', 'o');
+    errorbar(g, mean(v{g}), std(v{g})/sqrt(numel(v{g})), 'k', 'LineStyle', 'none', 'LineWidth', 1.5);
+end
+[~, p] = ttest2(v{1}, v{2}); % two-tailed t-test
+pvalues_plot(p, 1.5, max([v{:}]), 0.1*max([v{:}]), 1, 14, 0.5, 'k', 0)
+xticks([1 2]); xticklabels({'gratings', 'movies'}); xlim([0.5 2.5])
+ylabel('MIC EV')
 
 %%% compute alignment indices
 align_hat = nan(28, 2);
@@ -70,7 +117,7 @@ cols = [1,0,0; 0,1,0; 0,0,1; 0,0,0];
 hold on
 clear h
 for i = 1:size(alpha_null_subtr,2)
-    mu = alpha_null_subtr(:, i)';
+    mu = alpha_null_subtr(keep, i)';
 
     h(i) = scatter(nVIP./nACA,mu,'MarkerFaceColor',cols(i,:),'MarkerEdgeColor',cols(i,:));
     coeffs=polyfit(nVIP./nACA,mu,1);
@@ -78,7 +125,7 @@ for i = 1:size(alpha_null_subtr,2)
     tmpX = 0:0.01:0.2;
     plot(tmpX,coeffs(2)+tmpX*coeffs(1),'color',cols(i,:))
     [c,p]=corr([nVIP./nACA]',mu');
-    p = p*size(alpha_hat,2); % Bonferroni, adjusting p by N comparisons (here, 4)
+    p = p*size(alpha_null_subtr,2); % Bonferroni, adjusting p by N comparisons (here, 4)
     p = min([p,1]); % cap pval at 1
     pvalues_plot(p,0.15,0.95-0.15*i,0.05,1,14,0,cols(i,:),0)
 
@@ -158,7 +205,11 @@ keep = ~isnan(sum(X,2)) & ~isnan(sum(Y,2)) & ~isnan(sum(Z,2));
 X = X(keep,:); Y = Y(keep,:); Z = Z(keep,:);
 
 B_idx = find(res.mB_try == res.mB_opt);
-subspaces.B = mean(res.cvB{B_idx}.B,3);
+if isfield(res.cvB{B_idx}, 'B') % B is stored in field B by earlier code versions, in field A otherwise
+    subspaces.B = mean(res.cvB{B_idx}.B,3);
+else
+    subspaces.B = mean(res.cvB{B_idx}.A,3);
+end
 [subspaces.UB, subspaces.VB] = ...
     rank_factorization(subspaces.B, res.mB_opt);
 

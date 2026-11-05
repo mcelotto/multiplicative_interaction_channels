@@ -7,7 +7,7 @@
 clear; close all;
 
 dataset = 'V1_V2'; % 'V1_V2' (fig S9e) or 'ACA_VIP' (fig S11g)
-results_path = @@ your path; % folder with the results of fig4ad_and_S9.m (V1-V2) or fig4.m (ACA-VIP)
+results_path = @@ your path; % folder with the results of fig4ad_and_S9.m (V1-V2) or fig4eh.m (ACA-VIP)
 fig_save_path = @@ your path;
 
 % load fitted models (res) and sessions with significant modulation (keep)

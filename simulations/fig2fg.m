@@ -4,7 +4,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 
 % simulation settings
-nS = 10; nY = 10; nX = 10; % population dimensionalities
+nS = 20; nY = 20; nX = 20; % population dimensionalities
 N = 2000; % number of samples per sim
 num_sims_per = 5; % number of sims per (mA, mC) pair
 gt_rank_rng = 0:5; % list of mA, mC values to use

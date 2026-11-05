@@ -4,8 +4,12 @@
 % to non-convexity of modulation loss function (a, b)
 % comparison to splitting-based pipeline (c-e)
 % comparison to wheel-only and pupil-only fits (f)
-% nonlinearity diagnostic (g)
+% nonlinearity diagnostic (g): see figS9e_and_S11g.m
 %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+results_path = @@ your path; % folder with the results of fig4eh.m
+fig4 = load(fullfile(results_path, 'ACAxVIP_fig4_results'), "res", "keep"); % fig 4 fits and sessions with significant modulation
+keep = fig4.keep;
 
 
 %%%%%%%%
@@ -34,7 +38,7 @@ num_seeds_per = 10;
 res = cell(28, num_seeds_per);
 for idx = 1:28
     % read data
-    [ACA, VIP, wheel, pupil, stim_on, puff, t, type] = readACAVIP(idx);
+    [ACA, VIP, wheel, pupil] = readACAVIP(idx);
     disp(size(VIP)); disp(size(ACA))
     X = [wheel pupil];
     S = ACA;
@@ -62,9 +66,9 @@ for i = 1:size(res, 1)
 
         % geometry indices
         if res{i, j}.mC_opt>0
-            Ahat = mean(res{i, j}.cvA.A, 3);
-            WShat = mean(res{i, j}.cv_mod.WS, 3);
-            WYhat = mean(res{i, j}.cv_mod.WY, 3);
+            Ahat = mean(res{i, j}.cvA{1}.A, 3); % fixed ranks: one entry per component
+            WShat = mean(res{i, j}.cv_mod{1}.WS, 3);
+            WYhat = mean(res{i, j}.cv_mod{1}.WY, 3);
 
             alpha_hat = MIC.compute_alphas(Ahat, res{i, j}.mA_opt, WShat, WYhat);
             nshufs = 1000;
@@ -78,8 +82,6 @@ for i = 1:size(res, 1)
         end
     end
 end
-
-load(@@ path to list of sessions with significant modulation); %-->keep
 
 % plot
 figure;
@@ -151,8 +153,6 @@ end
 
 
 
-load(@ path to fig 4 ACAxVIP results); %-->saver
-saverMIC = saver;
 
 evA = [];
 evMultipleA = [];
@@ -160,8 +160,8 @@ evMod = [];
 evMod_MIC = [];
 % need to subtract EV_{AIS} to get EV_{mod}
 for i = 1:size(EV_all, 1)
-    evA(i) = saverMIC.res{i}.veA(saverMIC.res{i}.mA_try==saverMIC.res{i}.mA_opt);
-    evMod_MIC(i) = saverMIC.res{i}.ve_mod(saverMIC.res{i}.mC_try==saverMIC.res{i}.mC_opt);
+    evA(i) = fig4.res{i}.veA(fig4.res{i}.mA_try==fig4.res{i}.mA_opt);
+    evMod_MIC(i) = fig4.res{i}.ve_mod(fig4.res{i}.mC_try==fig4.res{i}.mC_opt);
     for j = 1:size(EV_all, 2)
         evMultipleA(i, j) = nanmean(EV_all{i, j});
         evMod(i, j) = nanmean(EV_all{i, j})-evA(i);
@@ -188,6 +188,86 @@ my_plotter(0, evMod_selected, 'k', 'r');
 scatter(0.75+randn(size(evMod, 1), 1)*0.08, evMod_MIC, 40, 'k', 'filled', 'MarkerFaceAlpha', 0.3);
 my_plotter(0.75, evMod_MIC', 'k', 'r');
 sam_style;
+
+
+%%%%%%%
+% (f)
+%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% re-fit MICs with only wheel speed OR only pupil diameter allowed to
+% partiicpate in the modulation
+% note that both wheel AND pupil are still regressed out
+% cap MIC rank at values selected without constraints
+% only fit in sessions with significant modulation
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+% previously selected ranks
+mA = [2 2 2 2 3 2 1 1 2 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 1];
+mB = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 0 1 1 1 1 1 1 1];
+mC = [1 3 3 0 3 1 0 3 0 1 1 1 3 1 2 2 2 1 1 0 0 2 4 0 2 1 2 0];
+mD = [1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1];
+
+% fitting settings
+params = struct;
+params.max_lin_rank = 20;
+params.K = 10;
+params.ctgs_folds_on = true; 
+params.seed = 42; 
+params.opts = struct;
+params.stratify_by = [];
+params.max_mod_rank = 10;
+
+
+% store results here
+res_kp_wheel = cell(28, 1); % pupil not allowed to participate in modulation
+res_kp_pupil = cell(28, 1); % wheel not allowed to participate in modulation
+
+for idx = 1:28
+    disp(idx)
+    if keep(idx)
+        [ACA, VIP, wheel, pupil, stim_on, t] = readACAVIP(idx); % read data
+        disp(size(VIP)); disp(size(ACA))
+        X = [wheel pupil];
+        S = ACA;
+        Y = VIP;
+
+        params.mA = mA(idx); params.mB = mB(idx); params.mD = mD(idx);
+        params.max_mod_rank = mC(idx);
+
+        params.opts.mod_constraint = [1 ; 0];
+        res_kp_wheel{idx} = MIC.model_wrapper(S, X, Y, params);
+
+        params.opts.mod_constraint = [0 ; 1];
+        res_kp_pupil{idx} = MIC.model_wrapper(S, X, Y, params);
+    end
+end
+
+ve_kp_wheel = nan(28, 1); ve_kp_pupil = nan(28, 1);
+for i = 1:28
+    if ~isempty(res_kp_wheel{i})
+        ve_kp_wheel(i) = res_kp_wheel{i}.ve_mod(res_kp_wheel{i}.mC_try==res_kp_wheel{i}.mC_opt);
+        ve_kp_pupil(i) = res_kp_pupil{i}.ve_mod(res_kp_pupil{i}.mC_try==res_kp_pupil{i}.mC_opt);       
+    end
+end
+
+figure; hold on;
+scatter(0.08*randn(sum(keep), 1), ve_kp_wheel(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
+scatter(0, mean(ve_kp_wheel(keep)), 80, 'r', 'filled', 'o');
+errorbar(0, mean(ve_kp_wheel(keep)), std(ve_kp_wheel(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
+
+scatter(1 + 0.08*randn(sum(keep), 1), ve_kp_pupil(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
+scatter(1, mean(ve_kp_pupil(keep)), 80, 'r', 'filled', 'o');
+errorbar(1, mean(ve_kp_pupil(keep)), std(ve_kp_pupil(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
+
+ve_mod = nan(28, 1);
+for i = 1:28
+    ve_mod(i) = fig4.res{i}.ve_mod(fig4.res{i}.mC_try==fig4.res{i}.mC_opt);
+end
+
+scatter(-1 + 0.08*randn(sum(keep), 1), ve_mod(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
+scatter(-1, mean(ve_mod(keep)), 80, 'c', 'filled', 'o');
+errorbar(-1, mean(ve_mod(keep)), std(ve_mod(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
 
 
 function my_plotter(x, y, col_line, col_mkr)
@@ -419,85 +499,14 @@ for i = 1:n1
 end
 end
 
-
-%%%%%%%
-% (f)
-%%%%%%%
-
-%%%%%%%%%%%%%%%%%%%%%%%%
-% re-fit MICs with only wheel speed OR only pupil diameter allowed to
-% partiicpate in the modulation
-% note that both wheel AND pupil are still regressed out
-% cap MIC rank at values selected without constraints
-% only fit in sessions with significant modulation
-%%%%%%%%%%%%%%%%%%%%%%%%
-
-load(@ path to fig 4 results); % --> keep (sessions with sig modulation), saver (full results)
-
-% previously selected ranks
-mA = [2 2 2 2 3 2 1 1 2 1 1 1 2 2 2 2 2 2 2 2 2 3 3 3 3 3 3 1];
-mB = [1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 2 1 0 1 1 1 1 1 1 1];
-mC = [1 3 3 0 3 1 0 3 0 1 1 1 3 1 2 2 2 1 1 0 0 2 4 0 2 1 2 0];
-mD = [1 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 1 1 2 1 1 1 1 1 1 1 1 1];
-
-% fitting settings
-params = struct;
-params.max_lin_rank = 20;
-params.K = 10;
-params.ctgs_folds_on = true; 
-params.seed = 42; 
-params.opts = struct;
-params.stratify_by = [];
-params.max_mod_rank = 10;
-
-
-% store results here
-res_kp_wheel = cell(28, 1); % pupil not allowed to participate in modulation
-res_kp_pupil = cell(28, 1); % wheel not allowed to participate in modulation
-
-for idx = 1:28
-    disp(idx)
-    if keep(idx)
-        [ACA, VIP, wheel, pupil, stim_on, t] = readACAVIP(idx); % read data
-        disp(size(VIP)); disp(size(ACA))
-        X = [wheel pupil];
-        S = ACA;
-        Y = VIP;
-
-        params.mA = mA(idx); params.mB = mB(idx); params.mD = mD(idx);
-        params.max_mod_rank = mC(idx);
-
-        params.opts.mod_constraint = [1 ; 0];
-        res_kp_wheel{idx} = MIC.model_wrapper(S, X, Y, params);
-
-        params.opts.mod_constraint = [0 ; 1];
-        res_kp_pupil{idx} = MIC.model_wrapper(S, X, Y, params);
-    end
+function sam_style()
+% figure style
+set(gca, 'FontSize', 12);
+set(gca, 'LineWidth', 1.5);
+box off;
+set(gca, 'TickDir', 'out');
+set(gca, 'TickLength', 0.01*[1, 1]);
+set(get(gca, 'XLabel'), 'FontSize', 16);
+set(get(gca, 'YLabel'), 'FontSize', 16);
+set(gcf, 'Color', 'w');
 end
-
-ve_kp_wheel = nan(28, 1); ve_kp_pupil = nan(28, 1);
-for i = 1:28
-    if ~isempty(res_kp_wheel{i})
-        ve_kp_wheel(i) = res_kp_wheel{i}.ve_mod(res_kp_wheel{i}.mC_try==res_kp_wheel{i}.mC_opt);
-        ve_kp_pupil(i) = res_kp_pupil{i}.ve_mod(res_kp_pupil{i}.mC_try==res_kp_pupil{i}.mC_opt);       
-    end
-end
-
-figure; hold on;
-scatter(0.08*randn(sum(keep), 1), ve_kp_wheel(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
-scatter(0, mean(ve_kp_wheel(keep)), 80, 'r', 'filled', 'o');
-errorbar(0, mean(ve_kp_wheel(keep)), std(ve_kp_wheel(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
-
-scatter(1 + 0.08*randn(sum(keep), 1), ve_kp_pupil(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
-scatter(1, mean(ve_kp_pupil(keep)), 80, 'r', 'filled', 'o');
-errorbar(1, mean(ve_kp_pupil(keep)), std(ve_kp_pupil(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
-
-ve_mod = nan(28, 1);
-for i = 1:28
-    ve_mod(i) = saver.res{i}.ve_mod(saver.res{i}.mC_try==saver.res{i}.mC_opt);
-end
-
-scatter(-1 + 0.08*randn(sum(keep), 1), ve_mod(keep), 40, 'k', 'filled', 'o', 'MarkerFaceAlpha', 0.3);
-scatter(-1, mean(ve_mod(keep)), 80, 'c', 'filled', 'o');
-errorbar(-1, mean(ve_mod(keep)), std(ve_mod(keep))/sqrt(sum(keep)), 'k', 'LineWidth', 1.5);
-

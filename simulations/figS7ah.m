@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%
-% simulations shown in Fig. S5a-h
+% simulations shown in Fig. S7a-h
 % validating geometry decomposition in single-nonzero-alpha scenarios
 %%%%%%%%%%%%%%%%%%%%%%%
 
