@@ -2,7 +2,7 @@
 
 Code for "Decomposing the modulation of interactions between neuronal populations" (Celotto*, Sooter*, Ährlund-Richter, Jenks, Sur†, Panzeri†; NeurIPS 2026).
 
-MICs extend the communication subspace framework (reduced-rank regression between a source population X and a target population Y) to quantify how a measured, possibly high-dimensional modulator Z reshapes the X→Y interaction. The modulation is parameterized as a low-rank (CP-decomposed) bilinear tensor, so that each channel pairs a source pattern, a target pattern, and the modulator pattern that scales their interaction. A geometric decomposition then quantifies whether each channel reshapes the baseline interaction or recruits dimensions private to the source or target.
+MICs extend the communication subspace framework from [Semedo et al. 2019 ](https://www.sciencedirect.com/science/article/pii/S0896627319300534?via%3Dihub) (reduced-rank regression between a source population X and a target population Y) to quantify how a measured, possibly high-dimensional modulator Z reshapes the X→Y interaction. The modulation is parameterized as a low-rank (CP-decomposed) bilinear tensor, so that each channel pairs a source pattern, a target pattern, and the modulator pattern that scales their interaction. A geometric decomposition then quantifies whether each channel reshapes the baseline interaction or recruits dimensions private to the source or target.
 
 ## Repository structure
 
