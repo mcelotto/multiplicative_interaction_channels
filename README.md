@@ -30,6 +30,7 @@ Before running, add the repository to the MATLAB path with its subfolders (`addp
 Developed and tested in MATLAB R2025b, with:
 
 - Statistics and Machine Learning Toolbox
+- Deep Learning Toolbox (for Fig. S6)
 - Parallel Computing Toolbox (parallelization across cross-validation folds)
 
 ## License
