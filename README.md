@@ -1,6 +1,6 @@
 ## Multiplicative interaction channels (MICs)
 
-Code for "Decomposing the modulation of interactions between neuronal populations" (Celotto*, Sooter*, Ährlund-Richter, Jenks, Sur†, Panzeri†; NeurIPS 2026).
+Code for "Decomposing the modulation of interactions between neuronal populations" (Celotto M.*, Sooter J.S.*, Ährlund-Richter S., Jenks K.R., Sur M.†, Panzeri S.†; NeurIPS 2026).
 
 MICs extend the communication subspace framework from [Semedo et al. 2019 ](https://www.sciencedirect.com/science/article/pii/S0896627319300534?via%3Dihub) (reduced-rank regression between a source population X and a target population Y) to quantify how a measured, possibly high-dimensional modulator Z reshapes the X→Y interaction. The modulation is parameterized as a low-rank (CP-decomposed) bilinear tensor, so that each channel pairs a source pattern, a target pattern, and the modulator pattern that scales their interaction. A geometric decomposition then quantifies whether each channel reshapes the baseline interaction or recruits dimensions private to the source or target.
 
@@ -16,8 +16,9 @@ MICs extend the communication subspace framework from [Semedo et al. 2019 ](http
 - `data_analysis/` – real-data analyses, organized by figure:
   - V1–V2 benchmark data (Fig. 4a–d, S9)
   - ACA–VIP data (Fig. 4e–h, S10, S11)
-
-Paths to data and results are marked with `@@` in the scripts and must be set before running.
+- `helpers/` – plotting utilities shared across scripts
+  
+Before running, add the repository to the MATLAB path with its subfolders (`addpath(genpath('<repo root>'))`) and set the paths to data and results, marked with `@@` in the scripts.
 
 ## Data
 
