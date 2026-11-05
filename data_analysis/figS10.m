@@ -1,5 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% code to generate fig S6
+% code to generate fig S10
 % further analyses of ACAxVIP data
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
