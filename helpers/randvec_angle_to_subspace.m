@@ -1,4 +1,4 @@
-% draw a vector uniformly from the unit sphere in the subspace orthogonal
+% draw a vector uniformly from the unit sphere in the subspace making angle theta
 % to the column space of UA
 function x = randvec_angle_to_subspace(UA, theta)
 % UA: n x k matrix whose columns span the subspace
