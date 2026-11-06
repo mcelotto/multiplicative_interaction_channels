@@ -1,3 +1,5 @@
+%%%% sigmoid nonlinearity
+
 % simulation settings
 a_list = linspace(0, 1, 6); % modulation strength parameter
 num_runs_per = 20;
@@ -84,7 +86,6 @@ for i = 1:size(results_all, 1)
             gt_pred = zeros(size(Yte));
             gt_pred_AIS = tanh(Ste_unn*curr2.A_gt);
 
-            % swap this out!!
             gt_pred = tanh(Ste_unn*curr2.A_gt + a_list(i)*((Xte_unn*curr2.WX_gt).*(Ste_unn*curr2.WS_gt))*curr2.WY_gt');
 
             gt_pred = (gt_pred - mean(Ytr_unn, 1))./std(Ytr_unn, [], 1);
