@@ -1,4 +1,8 @@
-%%%% sigmoid nonlinearity
+%%%%%%%%%%%%%%%%%%%%%%%
+% simulations shown in Fig. S5c
+% MICs applied to a nonlinear generator: saturating output,
+% Y = tanh(S*A + a*((S*WS).*(X*WX))*WY') + noise (Appendix B.10)
+%%%%%%%%%%%%%%%%%%%%%%%
 
 % simulation settings
 a_list = linspace(0, 1, 6); % modulation strength parameter
