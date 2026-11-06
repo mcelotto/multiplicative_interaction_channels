@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 % simulations shown in Fig. S5e
 % MICs applied to a nonlinear generator: rectifying modulator,
-% Y = S*A + a*((S*WS).*(relu(X)*WX))*WY' + noise (Appendix B.10)
+% Y = S*A + a*((S*WS).*(ReLU(X)*WX))*WY' + noise (Appendix B.10)
 %%%%%%%%%%%%%%%%%%%%%%%
 
 % simulation settings
