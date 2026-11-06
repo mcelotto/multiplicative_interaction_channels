@@ -1,3 +1,8 @@
+%%%%%%%%%%%%%%%%%%%%%%%
+% simulations shown in Fig. S5a,b
+% MICs applied to a nonlinear generator: rotations about an axis perpendicular or parallel to the AIS (Appendix B.10)
+%%%%%%%%%%%%%%%%%%%%%%%
+
 results_path = @@ your path; % folder where rotation_sim_results_2.mat (used by figS6.m) is saved
 
 % simulation settings
