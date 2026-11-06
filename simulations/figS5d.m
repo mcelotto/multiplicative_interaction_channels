@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%
 % simulations shown in Fig. S5d
 % MICs applied to a nonlinear generator: rectifying output,
-% Y = relu(S*A + a*((S*WS).*(X*WX))*WY') + noise (Appendix B.10)
+% Y = ReLU(S*A + a*((S*WS).*(X*WX))*WY') + noise (Appendix B.10)
 %%%%%%%%%%%%%%%%%%%%%%%
 
 % simulation settings
