@@ -83,11 +83,6 @@ for jjj = 1:length(a_list)
     end
 end
 
-saver = struct;
-saver.results = results_all;
-saver.params = params;
-saver.a_list = a_list;
-
 % plot results
 ve_mod = nan(size(results_all));
 gt_ve_mod = nan(size(results_all));
